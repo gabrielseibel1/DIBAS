@@ -1,6 +1,7 @@
 # DIBAS 🤙👌
 
-DIBAS (**D**istributed & **I**nteroperable load-**B**alancer by **A**rthur and **S**eibel) 
+**D**istributed & **I**nteroperable load-**B**alancer by [**A**rthur](https://github.com/arthuradolfo) and 
+[**S**eibel](https://github.com/gabrielseibel1)
 
 ### Distributed?  🌐
 DIBAS runs its load balancing on every machine of the cluster, unlike usual master-slave architectures (free the 
@@ -21,7 +22,8 @@ cluster, balancing it in real-time. This avoids bottlenecks in data/tasks ingres
 injected on the cluster in parallel.
 
 ### Adolfo and Seibel? 👥
-This projects is authored by Arthur Adolfo and Gabriel Seibel
+This projects is authored by 
+[Arthur Adolfo](https://github.com/arthuradolfo) and [Gabriel Seibel](https://github.com/gabrielseibel1).
 
 ## How to DIBAS? 🤔
 Some info on the project's characteristics and objectives:
