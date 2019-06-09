@@ -1,4 +1,4 @@
-#DIBAS
+# DIBAS 🤙👌
 
 DIBAS (**D**istributed & **I**nteroperable load-**B**alancer by **A**rthur and **S**eibel) 
 
@@ -21,7 +21,7 @@ cluster, balancing it in real-time. This avoids bottlenecks in data/tasks ingres
 injected on the cluster in parallel.
 
 ### Adolfo and Seibel? 👥
-This projects is authored by Arthur Adolfo and Gabriel Seibel 😎
+This projects is authored by Arthur Adolfo and Gabriel Seibel
 
 ## How to DIBAS? 🤔
 Some info on the project's characteristics and objectives:
