@@ -21,7 +21,7 @@ can be an entrypoint for jobs/tasks requests, since they automatically distribut
 cluster, balancing it in real-time. This avoids bottlenecks in data/tasks ingress on the system, since it can be 
 injected on the cluster in parallel.
 
-### Adolfo and Seibel? 👥
+### Arthur and Seibel? 👥
 This projects is authored by 
 [Arthur Adolfo](https://github.com/arthuradolfo) and [Gabriel Seibel](https://github.com/gabrielseibel1).
 
