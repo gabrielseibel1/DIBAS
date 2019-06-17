@@ -10,7 +10,7 @@ data class Node(val ip: String, val maxTasks: Int) {
 }
 
 fun clusterFromFile(config: String): Cluster {
-    //mappings of id to ip (node) and of id to it's neighbors' ids
+    //mappings of id to ip (node) and of id to its neighbors' ids
     val idNeighbors = mutableMapOf<String, List<String>>()
     val idToNode = mutableMapOf<String, Node>()
 
