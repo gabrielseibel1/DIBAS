@@ -6,10 +6,13 @@ data class Task(val request: String, val response: String)
 
 suspend fun dibas(
     taskProducer: suspend (todo: SendChannel<Task>) -> Unit,
+    taskProcessor: suspend (Task) -> Task,
     taskConsumer: suspend (done: ReceiveChannel<Task>) -> Unit
 ) {
-    val todo = Channel<Task>()
+    val todo = Channel<Task>(Channel.UNLIMITED)
     val done = Channel<Task>()
+
+    var load = 0
 
     //will finish only when the nested launches finish
     coroutineScope {
@@ -20,29 +23,47 @@ suspend fun dibas(
         //launch a coroutine that selects receives on channels
         launch {
             while (true) {
-                println("Selecting ...")
                 select<Unit> {
+
                     todo.onReceive { task ->
-                        println("Doing $task ...")
-                        done.send(task.copy(response = "done"))
+
+                        println("Doing $task. Load is now ${++load} ...")
+
+                        launch {
+                            val processed = taskProcessor(task)
+                            done.send(processed)
+                        }
                     }
+
                     //clusterRequest.onReceive { ... }
                 }
             }
         }
     }
+
+    todo.close()
+    done.close()
 }
 
 @ExperimentalCoroutinesApi
 fun main() = runBlocking {
-    dibas(::taskProducer, ::taskConsumer)
+    dibas(
+        ::taskProducer,
+        ::taskProcessor,
+        ::taskConsumer
+    )
+}
+
+suspend fun taskProcessor(task: Task): Task {
+    delay((100..3000).random().toLong())
+    return task.copy(response = "done")
 }
 
 //produce sends tasks to the "to do" chanel
 suspend fun taskProducer(todo: SendChannel<Task>) {
     var i = 0
     while (true) {
-        delay(1000L)
+        delay(250L)
 
         val task = Task("${i++}", "")
         println("Produced $task")
@@ -53,6 +74,6 @@ suspend fun taskProducer(todo: SendChannel<Task>) {
 //consume receives tasks from the "done" channel
 suspend fun taskConsumer(done: ReceiveChannel<Task>) {
     for (task in done) {
-        println("Consumed $task")
+        println("Consumed $task\n\n")
     }
 }
