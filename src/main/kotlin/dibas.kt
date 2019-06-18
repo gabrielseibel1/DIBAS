@@ -2,15 +2,16 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.selects.select
 
-data class Task(val request: String, val response: String)
+data class Task(val content: String)
+data class Result(val content: String)
 
 suspend fun dibas(
     taskProducer: suspend (todo: SendChannel<Task>) -> Unit,
-    taskProcessor: suspend (Task) -> Task,
-    taskConsumer: suspend (done: ReceiveChannel<Task>) -> Unit
+    taskResult: suspend (Task) -> Result,
+    resultConsumer: suspend (done: ReceiveChannel<Result>) -> Unit
 ) {
     val todo = Channel<Task>(Channel.UNLIMITED)
-    val done = Channel<Task>()
+    val done = Channel<Result>()
 
     var load = 0
 
@@ -18,7 +19,7 @@ suspend fun dibas(
     coroutineScope {
 
         launch { taskProducer(todo) }
-        launch { taskConsumer(done) }
+        launch { resultConsumer(done) }
 
         //launch a coroutine that selects receives on channels
         launch {
@@ -30,8 +31,8 @@ suspend fun dibas(
                         println("Doing $task. Load is now ${++load} ...")
 
                         launch {
-                            val processed = taskProcessor(task)
-                            done.send(processed)
+                            val result = taskResult(task)
+                            done.send(result)
                         }
                     }
 
@@ -49,31 +50,32 @@ suspend fun dibas(
 fun main() = runBlocking {
     dibas(
         ::taskProducer,
-        ::taskProcessor,
-        ::taskConsumer
+        ::taskResult,
+        ::resultConsumer
     )
 }
 
-suspend fun taskProcessor(task: Task): Task {
-    delay((100..3000).random().toLong())
-    return task.copy(response = "done")
+//taskResult takes a Task and returns its Result
+suspend fun taskResult(task: Task): Result {
+    delay(1500L)
+    return Result("$task done")
 }
 
 //produce sends tasks to the "to do" chanel
 suspend fun taskProducer(todo: SendChannel<Task>) {
     var i = 0
     while (true) {
-        delay(250L)
+        delay((100..3000).random().toLong())
 
-        val task = Task("${i++}", "")
+        val task = Task("${i++}")
         println("Produced $task")
         todo.send(task)
     }
 }
 
 //consume receives tasks from the "done" channel
-suspend fun taskConsumer(done: ReceiveChannel<Task>) {
-    for (task in done) {
-        println("Consumed $task\n\n")
+suspend fun resultConsumer(done: ReceiveChannel<Result>) {
+    for (result in done) {
+        println("Consumed $result\n\n")
     }
 }
