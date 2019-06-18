@@ -2,64 +2,32 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.selects.select
 
-
 data class Task(val request: String, val response: String)
 
-@ExperimentalCoroutinesApi
-suspend fun dibas(produceAndConsume: suspend (todo: SendChannel<Task>, done: ReceiveChannel<Task>) -> Unit) {
+suspend fun dibas(
+    taskProducer: suspend (todo: SendChannel<Task>) -> Unit,
+    taskConsumer: suspend (done: ReceiveChannel<Task>) -> Unit
+) {
     val todo = Channel<Task>()
     val done = Channel<Task>()
 
     //will finish only when the nested launches finish
     coroutineScope {
 
-        //launch producer and consumer
-        launch {
-            produceAndConsume(todo, done)
-        }
+        launch { taskProducer(todo) }
+        launch { taskConsumer(done) }
 
         //launch a coroutine that selects receives on channels
         launch {
             while (true) {
                 println("Selecting ...")
                 select<Unit> {
-
-                    //clusterRequest.onReceive { ... }
-
                     todo.onReceive { task ->
                         println("Doing $task ...")
                         done.send(task.copy(response = "done"))
                     }
+                    //clusterRequest.onReceive { ... }
                 }
-            }
-        }
-    }
-
-
-    println("Dibas finished")
-}
-
-@ExperimentalCoroutinesApi
-suspend fun produceAndConsume(todo: SendChannel<Task>, done: ReceiveChannel<Task>) {
-
-    //will finish only when the nested launches finish
-    coroutineScope {
-        //launch producer
-        launch {
-            var i = 0
-            while (true) {
-                delay(1000L)
-
-                println("Producing ...")
-                todo.send(Task("Task ${i++}", ""))
-            }
-        }
-
-        //launch consumer
-        launch {
-            println("Consuming ...")
-            done.consumeEach {
-                println("Main received ${it.request}: ${it.response}")
             }
         }
     }
@@ -67,11 +35,24 @@ suspend fun produceAndConsume(todo: SendChannel<Task>, done: ReceiveChannel<Task
 
 @ExperimentalCoroutinesApi
 fun main() = runBlocking {
+    dibas(::taskProducer, ::taskConsumer)
+}
 
-    dibas { todo, done ->
-        produceAndConsume(todo, done)
+//produce sends tasks to the "to do" chanel
+suspend fun taskProducer(todo: SendChannel<Task>) {
+    var i = 0
+    while (true) {
+        delay(1000L)
+
+        val task = Task("${i++}", "")
+        println("Produced $task")
+        todo.send(task)
     }
+}
 
-    //will execute after dibas finishes
-    println("Main finished")
+//consume receives tasks from the "done" channel
+suspend fun taskConsumer(done: ReceiveChannel<Task>) {
+    for (task in done) {
+        println("Consumed $task")
+    }
 }
