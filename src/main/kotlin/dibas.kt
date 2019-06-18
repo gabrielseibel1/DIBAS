@@ -32,6 +32,7 @@ suspend fun dibas(
 
                         launch {
                             val result = taskResult(task)
+                            --load
                             done.send(result)
                         }
                     }
