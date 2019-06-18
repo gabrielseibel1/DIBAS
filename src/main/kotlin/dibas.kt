@@ -47,7 +47,6 @@ suspend fun dibas(
     done.close()
 }
 
-@ExperimentalCoroutinesApi
 fun main() = runBlocking {
     dibas(
         ::taskProducer,
