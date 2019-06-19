@@ -1,3 +1,5 @@
+package dibas
+
 import java.io.File
 import java.net.InetAddress
 
