@@ -1,11 +1,21 @@
+import io.ktor.application.Application
+import io.ktor.application.*
+import io.ktor.http.*
+import io.ktor.response.*
+import io.ktor.routing.*
+import io.ktor.server.engine.*
+import io.ktor.server.netty.*
+import io.ktor.websocket.WebSockets
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.selects.select
+import java.time.Duration
 
 data class Task(val content: String)
 data class Result(val content: String)
 
 suspend fun dibas(
+    cluster: Cluster,
     taskProducer: suspend (todo: SendChannel<Task>) -> Unit,
     taskResult: suspend (Task) -> Result,
     resultConsumer: suspend (done: ReceiveChannel<Result>) -> Unit
@@ -14,6 +24,16 @@ suspend fun dibas(
     val done = Channel<Result>()
 
     var load = 0
+
+    val server = embeddedServer(Netty, 8080) {
+        install(WebSockets) {
+            pingPeriod = Duration.ofSeconds(60) // Disabled (null) by default
+            timeout = Duration.ofSeconds(15)
+            maxFrameSize = Long.MAX_VALUE // Disabled (max value). The connection will be closed if surpassed this length.
+            masking = false
+        }
+    }
+
 
     //will finish only when the nested launches finish
     coroutineScope {
@@ -49,6 +69,7 @@ suspend fun dibas(
 
 fun main() = runBlocking {
     dibas(
+        clusterFromFile(javaClass.classLoader.getResource("../resources/config/cluster.csv").toString()),
         ::taskProducer,
         ::taskResult,
         ::resultConsumer
