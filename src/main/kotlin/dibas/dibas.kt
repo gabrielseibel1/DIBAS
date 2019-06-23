@@ -29,13 +29,11 @@ suspend fun dibas(
     val remoteUpdates = Channel<NodeLoad>(Channel.UNLIMITED)
     val localUpdates = Channel<LocalLoadUpdate>(Channel.UNLIMITED)
 
-    //ordered loads of each neighbor and of this node
-    val nodesLoads = sortedNodeLoadsOf(cluster)
     var load = 0
 
     suspend fun doOrDelegate(task: Task, results: SendChannel<Result>) {
-        val neighbor = nodesLoads.poll()
-        if (neighbor != null && neighbor.load + threshold < load) {
+        val neighbor = cluster.lessBusyNeighbor()
+        if (neighbor.load + threshold < load) {
             //delegate execution of task to neighbor
             sentDelegationsTasks.send(DelegationTask(task, neighbor.node.ip))
             val delegationResult = sentDelegationsResults.receive()
@@ -65,7 +63,7 @@ suspend fun dibas(
                     launch { doOrDelegate(it, receivedDelegationsResults) }
                 }
                 remoteUpdates.onReceive {
-                    nodesLoads.add(it)
+                    cluster.load[it.node] = it.load
                 }
                 localUpdates.onReceive {
                     load = it.update(load)

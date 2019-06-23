@@ -2,15 +2,27 @@ package dibas
 
 import java.io.File
 import java.net.InetAddress
+import kotlin.Comparator
 
 data class Cluster(val graph: Map<Node, List<Node>>) {
 
-    private val hostNode: Node by lazy {
+    val load: MutableMap<Node, Int>
+
+    init {
         val host = InetAddress.getLocalHost().hostAddress
-        graph.keys.first { it.ip == host }
+        val hostNode = graph.keys.first { it.ip == host }
+        val neighbors = graph[hostNode].orEmpty()
+        load = neighbors.map { it to 0 }.toMap().toMutableMap()
     }
 
-    val neighbors: List<Node> by lazy { graph[hostNode].orEmpty() }
+    fun lessBusyNeighbor(): NodeLoad {
+        val node = load.toSortedMap(
+            Comparator { n1, n2 ->
+                load[n1]!! - load[n2]!!
+            }).firstKey()
+
+        return NodeLoad(node, load[node]!!)
+    }
 }
 
 data class Node(val id: String, val ip: String)
