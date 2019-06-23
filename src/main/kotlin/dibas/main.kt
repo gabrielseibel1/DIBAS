@@ -1,19 +1,16 @@
 package dibas
 
 import io.ktor.util.KtorExperimentalAPI
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 @KtorExperimentalAPI
 fun main(): Unit = runBlocking {
-
-    val sender = Sender()
     val cluster = clusterFromFile("../resources/config/cluster.csv")
+    val dibas = Dibas(cluster)
 
-    launch { dibas(cluster) }
+    launch { dibas.run() }
 
     var i = 0
     while (true) {
@@ -26,7 +23,7 @@ fun main(): Unit = runBlocking {
             Result("I'm result $i")
         }
 
-        val result = sender.delegate(task, cluster.hostNode)
+        val result = dibas.sender.delegate(task, cluster.hostNode)
         println(result)
     }
 }
