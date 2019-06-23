@@ -4,12 +4,16 @@ import java.io.File
 import java.net.InetAddress
 
 data class Cluster(val graph: Map<Node, List<Node>>) {
-    fun hasHost() = graph.any { (node, _) -> node.ip == InetAddress.getLocalHost().hostAddress }
+
+    private val hostNode: Node by lazy {
+        val host = InetAddress.getLocalHost().hostAddress
+        graph.keys.first { it.ip == host }
+    }
+
+    val neighbors: List<Node> by lazy { graph[hostNode].orEmpty() }
 }
 
-data class Node(val ip: String, val maxTasks: Int) {
-    fun canDelegate(): Boolean = TODO("implement me")
-}
+data class Node(val id: String, val ip: String)
 
 fun clusterFromFile(config: String): Cluster {
     //mappings of id to ip (node) and of id to its neighbors' ids
@@ -21,11 +25,11 @@ fun clusterFromFile(config: String): Cluster {
 
         val cells = line.split(',').map { it.trim() }
 
-        val (id, ip, maxTasks) = cells.slice(0..2)
+        val (id, ip) = cells.slice(0..1)
 
-        idToNode[id] = Node(ip, maxTasks.toInt())
+        idToNode[id] = Node(id, ip)
 
-        idNeighbors[id] = cells.drop(3)
+        idNeighbors[id] = cells.drop(2)
     }
 
     //build graph

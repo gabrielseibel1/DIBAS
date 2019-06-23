@@ -3,17 +3,18 @@ package dibas
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.selects.select
-import java.util.*
+import java.util.PriorityQueue
 
 //threshold of load difference to consider that a delegation is worth doing
 const val threshold = 0
 
 data class Task(val content: String)
 data class Result(val content: String)
-data class RemoteLoadUpdate(val nodeId: String, val load: Int)
-data class Delegation(val task: Task, val nodeId: String)
+data class NodeLoad(val node: Node, val load: Int)
+data class DelegationTask(val task: Task, val nodeId: String)
+data class DelegationResult(val result: Result, val nodeId: String)
 
-fun String.toLoadUpdate(): RemoteLoadUpdate = TODO()
+fun String.toLoadUpdate(): NodeLoad = TODO()
 
 enum class LocalLoadUpdate {
     INC {
@@ -26,8 +27,15 @@ enum class LocalLoadUpdate {
     abstract fun update(load: Int): Int
 }
 
-fun TreeMap<Int, String>.from(cluster: Cluster): TreeMap<Int, String> {
-    TODO("put all neighbors of localhost ip")
+fun priorityQueueOf(cluster: Cluster): PriorityQueue<NodeLoad> {
+    //put all neighbors of localhost with 0 tasks
+    val q = PriorityQueue<NodeLoad>(
+        Comparator { o1, o2 -> o1.load - o2.load }
+    )
+    cluster.neighbors.forEach { node ->
+        q.add(NodeLoad(node, 0))
+    }
+    return q
 }
 
 suspend fun dibas(
@@ -36,46 +44,59 @@ suspend fun dibas(
     taskResult: suspend (Task) -> Result,
     resultConsumer: suspend (done: ReceiveChannel<Result>) -> Unit
 ) {
+    //local tasks and results
     val todo = Channel<Task>(Channel.UNLIMITED)
     val done = Channel<Result>()
-    val delegatedTodo = Channel<Task>(Channel.UNLIMITED)
-    val delegatedDone = Channel<Result>()
-    val remoteUpdates = Channel<RemoteLoadUpdate>(Channel.UNLIMITED)
+
+    //tasks and results delegated FROM others
+    val receivedDelegationsTasks = Channel<Task>(Channel.UNLIMITED)
+    val receivedDelegationsResults = Channel<Result>()
+
+    //tasks and results delegated TO others
+    val sentDelegationsTasks = Channel<DelegationTask>(Channel.UNLIMITED)
+    val sentDelegationsResults = Channel<DelegationResult>(Channel.UNLIMITED)
+
+    //load updates of neighbors or of this node
+    val remoteUpdates = Channel<NodeLoad>(Channel.UNLIMITED)
     val localUpdates = Channel<LocalLoadUpdate>(Channel.UNLIMITED)
-    val toDelegate = Channel<Delegation>(Channel.UNLIMITED)
-    val neighborsLoads = TreeMap<Int, String>().from(cluster)
+
+    //ordered loads of each neighbor and of this node
+    val neighborsLoads = priorityQueueOf(cluster)
     var load = 0
 
     suspend fun doOrDelegate(task: Task, results: SendChannel<Result>) {
-        //see if there is neighbor to delegate task to
-        val neighbor = neighborsLoads.firstEntry()
-        if (neighbor.key + threshold < load) {
-            toDelegate.send(Delegation(task, neighbor.value))
-            return
-        }
+        val neighbor = neighborsLoads.poll()
+        if (neighbor != null && neighbor.load + threshold < load) {
+            //delegate execution of task to neighbor
+            sentDelegationsTasks.send(DelegationTask(task, neighbor.node.ip))
+            val delegationResult = sentDelegationsResults.receive()
+            results.send(delegationResult.result)
 
-        //execute task
-        localUpdates.send(LocalLoadUpdate.INC)
-        val result = taskResult(task)
-        results.send(result)
-        localUpdates.send(LocalLoadUpdate.DEC)
+        } else {
+            //execute task locally
+            localUpdates.send(LocalLoadUpdate.INC)
+            val result = taskResult(task)
+            results.send(result)
+            localUpdates.send(LocalLoadUpdate.DEC)
+        }
     }
 
     //will finish only when the nested launches finish
     coroutineScope {
         launch { taskProducer(todo) }
         launch { resultConsumer(done) }
-        launch { receiveDelegationsAndUpdates(delegatedTodo, delegatedDone, remoteUpdates) }
+        launch { receiveDelegationsAndUpdates(receivedDelegationsTasks, receivedDelegationsResults, remoteUpdates) }
+        launch { sendDelegations(sentDelegationsTasks) }
         launch {
             while (true) select<Unit> {
                 todo.onReceive {
                     launch { doOrDelegate(it, done) }
                 }
-                delegatedTodo.onReceive {
-                    launch { doOrDelegate(it, delegatedDone) }
+                receivedDelegationsTasks.onReceive {
+                    launch { doOrDelegate(it, receivedDelegationsResults) }
                 }
                 remoteUpdates.onReceive {
-                    neighborsLoads[it.load] = it.nodeId
+                    neighborsLoads.add(it)
                 }
                 localUpdates.onReceive {
                     load = it.update(load)
@@ -86,6 +107,11 @@ suspend fun dibas(
 
     todo.close()
     done.close()
+    receivedDelegationsTasks.close()
+    receivedDelegationsResults.close()
+    remoteUpdates.close()
+    localUpdates.close()
+    sentDelegationsTasks.close()
 }
 
 fun main() = runBlocking {

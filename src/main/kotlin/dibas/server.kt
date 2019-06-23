@@ -12,7 +12,7 @@ import java.time.Duration
 fun receiveDelegationsAndUpdates(
     delegatedTodo: SendChannel<Task>,
     delegatedDone: ReceiveChannel<Result>,
-    loadUpdates: SendChannel<RemoteLoadUpdate>
+    loadUpdates: SendChannel<NodeLoad>
 ) =
     embeddedServer(Netty, 8080) {
         install(WebSockets) {
