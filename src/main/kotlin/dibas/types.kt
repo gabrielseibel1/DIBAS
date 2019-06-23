@@ -4,7 +4,7 @@ import java.util.*
 import kotlin.Comparator
 
 data class Task(val content: String)
-data class Result(val content: String)
+data class Result(val task: Task, val content: String)
 data class NodeLoad(val node: Node, val load: Int)
 data class DelegationTask(val task: Task, val nodeId: String)
 data class DelegationResult(val result: Result, val nodeId: String)

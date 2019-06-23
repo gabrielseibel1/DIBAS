@@ -17,7 +17,7 @@ fun main() = runBlocking {
 //dibas.taskResult takes a dibas.Task and returns its dibas.Result
 suspend fun taskResult(task: Task): Result {
     delay(1500L)
-    return Result("$task done")
+    return Result(task,"done")
 }
 
 //produce sends tasks to the "to do" chanel
