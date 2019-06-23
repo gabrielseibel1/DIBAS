@@ -16,12 +16,8 @@ data class Cluster(val graph: Map<Node, List<Node>>) {
     }
 
     fun lessBusyNeighbor(): NodeLoad {
-        val node = load.toSortedMap(
-            Comparator { n1, n2 ->
-                load[n1]!! - load[n2]!!
-            }).firstKey()
-
-        return NodeLoad(node, load[node]!!)
+        val entry = load.toList().minBy { it.second }
+        return NodeLoad(entry!!.first, entry.second)
     }
 }
 
