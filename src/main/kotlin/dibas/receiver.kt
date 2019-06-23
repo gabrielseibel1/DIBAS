@@ -9,10 +9,9 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.channels.*
 import java.time.Duration
 
-fun receiveDelegationsAndUpdates(
-    delegatedTodo: SendChannel<Task>,
-    delegatedDone: ReceiveChannel<Result>,
-    loadUpdates: SendChannel<NodeLoad>
+fun receiveTasksAndUpdates(
+    doOrDelegate: suspend (Task) -> Result,
+    loads: SendChannel<NodeLoad>
 ) =
     embeddedServer(Netty, 8080) {
         install(WebSockets) {
@@ -22,18 +21,17 @@ fun receiveDelegationsAndUpdates(
             masking = false
         }
         routing {
-            webSocket("/delegation") {
+            webSocket("/tasks") {
                 for (frame in incoming.mapNotNull { it as? Frame.Text }) {
-                    delegatedTodo.send(Task(frame.readText()))
-                    val result = delegatedDone.receive()
+                    val task = frame.readText().toTask()
+                    val result = doOrDelegate(task)
                     outgoing.send(Frame.Text(result.toString()))
                 }
             }
-            webSocket("/update") {
+            webSocket("/loads") {
                 for (frame in incoming.mapNotNull { it as? Frame.Text }) {
-                    loadUpdates.send(frame.readText().toLoadUpdate())
+                    loads.send(frame.readText().toNodeLoad())
                 }
             }
-
         }
     }.start()

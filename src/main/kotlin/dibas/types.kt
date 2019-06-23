@@ -1,12 +1,12 @@
 package dibas
 
-data class Task(val content: String)
-data class Result(val task: Task, val content: String)
+data class Task(val toResult: suspend () -> Result)
+data class Result(val content: String)
 data class NodeLoad(val node: Node, val load: Int)
-data class DelegationTask(val task: Task, val nodeId: String)
-data class DelegationResult(val result: Result, val nodeId: String)
 
-fun String.toLoadUpdate(): NodeLoad = TODO()
+fun String.toTask(): Task = TODO()
+fun String.toResult(): Result = TODO()
+fun String.toNodeLoad(): NodeLoad = TODO()
 
 enum class LocalLoadUpdate {
     INC {

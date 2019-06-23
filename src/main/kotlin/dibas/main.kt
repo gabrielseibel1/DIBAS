@@ -1,40 +1,32 @@
 package dibas
 
+import io.ktor.util.KtorExperimentalAPI
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
-fun main() = runBlocking {
-    dibas(
-        clusterFromFile("../resources/config/cluster.csv"),
-        ::taskProducer,
-        ::taskResult,
-        ::resultConsumer
-    )
-}
+@KtorExperimentalAPI
+fun main(): Unit = runBlocking {
 
-//dibas.taskResult takes a dibas.Task and returns its dibas.Result
-suspend fun taskResult(task: Task): Result {
-    delay(1500L)
-    return Result(task,"done")
-}
+    val sender = Sender()
+    val cluster = clusterFromFile("../resources/config/cluster.csv")
 
-//produce sends tasks to the "to do" chanel
-suspend fun taskProducer(todo: SendChannel<Task>) {
+    launch { dibas(cluster) }
+
     var i = 0
     while (true) {
-        delay((100..3000).random().toLong())
+        i++
+        delay(1_000L)
 
-        val task = Task("${i++}")
-        println("Produced $task")
-        todo.send(task)
-    }
-}
+        val task = Task {
+            println("I'm task $i")
+            delay((100..3_000).random().toLong())
+            Result("I'm result $i")
+        }
 
-//consume receives tasks from the "done" channel
-suspend fun resultConsumer(done: ReceiveChannel<Result>) {
-    for (result in done) {
-        println("Consumed $result\n\n")
+        val result = sender.delegate(task, cluster.hostNode)
+        println(result)
     }
 }

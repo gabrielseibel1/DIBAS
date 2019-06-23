@@ -6,12 +6,14 @@ import kotlin.Comparator
 
 data class Cluster(val graph: Map<Node, List<Node>>) {
 
+    val hostNode: Node
+    val neighbors: List<Node>
     val load: MutableMap<Node, Int>
 
     init {
         val host = InetAddress.getLocalHost().hostAddress
-        val hostNode = graph.keys.first { it.ip == host }
-        val neighbors = graph[hostNode].orEmpty()
+        hostNode = graph.keys.first { it.ip == host }
+        neighbors = graph[hostNode].orEmpty()
         load = neighbors.map { it to 0 }.toMap().toMutableMap()
     }
 
