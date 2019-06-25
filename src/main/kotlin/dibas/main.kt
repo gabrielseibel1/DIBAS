@@ -23,7 +23,7 @@ fun main(): Unit = runBlocking {
             Result("I'm result $i")
         }
 
-        val result = dibas.sender.delegate(task, cluster.hostNode)
+        val result = dibas.resolve(task)
         println(result)
     }
 }

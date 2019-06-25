@@ -7,7 +7,13 @@ import kotlinx.coroutines.selects.select
 
 class Dibas(private val cluster: Cluster) {
 
-    val sender = Sender()
+    @KtorExperimentalAPI
+    private val sender = Sender()
+
+    @KtorExperimentalAPI
+    suspend fun resolve(task: Task): Result {
+        return sender.delegate(task, cluster.hostNode)
+    }
 
     @KtorExperimentalAPI
     suspend fun run() {
@@ -45,7 +51,7 @@ class Dibas(private val cluster: Cluster) {
     }
 
     @KtorExperimentalAPI
-    fun CoroutineScope.broadcastUpdate(sender: Sender, cluster: Cluster, load: Int) {
+    private fun CoroutineScope.broadcastUpdate(sender: Sender, cluster: Cluster, load: Int) {
         cluster.neighbors.forEach { destination ->
             launch {
                 sender.sendUpdate(NodeLoad(cluster.hostNode, load), destination)
@@ -53,7 +59,7 @@ class Dibas(private val cluster: Cluster) {
         }
     }
 
-    companion object {
+    private companion object {
         //threshold of load difference to consider that a delegation is worth doing
         const val threshold = 0
     }
