@@ -22,15 +22,16 @@ fun receiveTasksAndUpdates(
         }
         routing {
             webSocket("/tasks") {
-                for (frame in incoming.mapNotNull { it as? Frame.Text }) {
-                    val task = frame.readText().toTask()
+                for (frame in incoming.mapNotNull { it as? Frame.Binary }) {
+                    val task = frame.readBytes().to<Task>()
                     val result = doOrDelegate(task)
-                    outgoing.send(Frame.Text(result.toString()))
+                    outgoing.send(Frame.Binary(true, result.toBytes()))
                 }
             }
             webSocket("/loads") {
-                for (frame in incoming.mapNotNull { it as? Frame.Text }) {
-                    loads.send(frame.readText().toNodeLoad())
+                for (frame in incoming.mapNotNull { it as? Frame.Binary }) {
+                    val nl = frame.readBytes().to<NodeLoad>()
+                    loads.send(nl)
                 }
             }
         }

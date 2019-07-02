@@ -5,9 +5,14 @@ import io.ktor.client.features.websocket.WebSockets
 import io.ktor.client.features.websocket.ws
 import io.ktor.http.HttpMethod
 import io.ktor.http.cio.websocket.Frame
+import io.ktor.http.cio.websocket.readBytes
 import io.ktor.http.cio.websocket.readText
 import io.ktor.util.KtorExperimentalAPI
 import kotlinx.coroutines.channels.Channel
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.io.ObjectOutput
+import java.io.ObjectOutputStream
 
 @KtorExperimentalAPI
 class Sender {
@@ -21,7 +26,9 @@ class Sender {
             method = HttpMethod.Get,
             host = node.ip,
             port = 8080, path = "/loads"
-        ) { send(Frame.Text(update.toString())) }
+        ) {
+            send(Frame.Binary(true, update.toBytes()))
+        }
     }
 
     suspend fun delegate(
@@ -38,9 +45,14 @@ class Sender {
             host = node.ip,
             port = 8080, path = "/tasks"
         ) {
-            send(Frame.Text(task.toString()))
-            val frame = incoming.receive() as Frame.Text
-            resultChannel.send(frame.readText().toResult())
+
+            send(Frame.Binary(true, task.toBytes()))
+
+            val frame = incoming.receive() as Frame.Binary
+
+            val r = frame.readBytes().to<Result>()
+
+            resultChannel.send(r)
         }
 
         return result
