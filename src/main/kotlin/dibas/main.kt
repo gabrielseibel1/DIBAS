@@ -7,7 +7,9 @@ import kotlinx.coroutines.runBlocking
 
 @KtorExperimentalAPI
 fun main(): Unit = runBlocking {
-    val cluster = clusterFromFile("../resources/config/cluster.csv")
+    val cluster = clusterFromFile("src/main/resources/config/clusterDense.csv")
+    println(cluster)
+
     val dibas = Dibas(cluster)
 
     launch { dibas.run() }

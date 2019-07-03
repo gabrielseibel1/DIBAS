@@ -2,7 +2,7 @@ package dibas
 
 import java.io.File
 import java.net.InetAddress
-import kotlin.Comparator
+import kotlin.text.StringBuilder
 
 data class Cluster(val graph: Map<Node, List<Node>>) {
 
@@ -21,6 +21,15 @@ data class Cluster(val graph: Map<Node, List<Node>>) {
         val entry = load.toList().minBy { it.second }
         return NodeLoad(entry!!.first, entry.second)
     }
+
+    override fun toString(): String {
+        val sb = StringBuilder()
+        graph.forEach { (node, list) ->
+            sb.append("\n$node\tknows\t")
+            list.forEach { sb.append("$it, ") }
+        }
+        return sb.toString()
+    }
 }
 
 data class Node(val id: String, val ip: String)
@@ -33,7 +42,7 @@ fun clusterFromFile(config: String): Cluster {
     //read lines after header
     File(config).readLines().drop(1).forEach { line ->
 
-        val cells = line.split(',').map { it.trim() }
+        val cells = line.split(',').map { it.trim() }.filter { it.isNotBlank() }
 
         val (id, ip) = cells.slice(0..1)
 
@@ -45,7 +54,15 @@ fun clusterFromFile(config: String): Cluster {
     //build graph
     val g = mutableMapOf<Node, List<Node>>()
     idNeighbors.forEach { (id, nbrs) ->
-        g[idToNode[id]!!] = nbrs.map { idToNode[it]!! }.toList()
+        val node = idToNode[id]
+        if (node != null) {
+            g[node] =
+                nbrs
+                    .map { nbr ->
+                        idToNode[nbr]!!
+                    }
+                    .toList()
+        }
     }
 
     return Cluster(g.toMap())
