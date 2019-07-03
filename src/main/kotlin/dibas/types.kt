@@ -1,12 +1,10 @@
 package dibas
 
-data class Task(val toResult: suspend () -> Result)
-data class Result(val content: String)
-data class NodeLoad(val node: Node, val load: Int)
+import java.io.*
 
-fun String.toTask(): Task = TODO()
-fun String.toResult(): Result = TODO()
-fun String.toNodeLoad(): NodeLoad = TODO()
+data class Task(val toResult: suspend () -> Result) : Serializable
+data class Result(val content: String): Serializable
+data class NodeLoad(val node: Node, val load: Int): Serializable
 
 enum class LocalLoadUpdate {
     INC {
