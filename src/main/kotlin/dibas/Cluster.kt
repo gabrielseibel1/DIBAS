@@ -1,7 +1,6 @@
 package dibas
 
 import java.io.File
-import java.net.InetAddress
 import kotlin.text.StringBuilder
 
 data class Cluster(val graph: Map<Node, List<Node>>) {
@@ -11,7 +10,7 @@ data class Cluster(val graph: Map<Node, List<Node>>) {
     val load: MutableMap<Node, Int>
 
     init {
-        val host = InetAddress.getLocalHost().hostAddress
+        val host = "127.0.0.1" /*InetAddress.getLocalHost().hostAddress*/
         hostNode = graph.keys.first { it.ip == host }
         neighbors = graph[hostNode].orEmpty()
         load = neighbors.map { it to 0 }.toMap().toMutableMap()

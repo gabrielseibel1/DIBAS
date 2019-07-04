@@ -24,44 +24,59 @@ class Dibas(private val cluster: Cluster) {
         suspend fun doOrDelegate(task: Task): Result {
             val neighbor = cluster.lessBusyNeighbor()
             if (neighbor.load + threshold < load) {
+                println("Delegating to ${neighbor.node}")
                 return sender.delegate(task, neighbor.node)
             }
 
             //execute task locally
+            println("${cluster.hostNode} calculating result ...")
             localUpdates.send(LocalLoadUpdate.INC)
             val result = task.toResult.invoke()
             localUpdates.send(LocalLoadUpdate.DEC)
+            println("${cluster.hostNode} obtained $result")
             return result
         }
 
-        receiveTasksAndUpdates(::doOrDelegate, loadsFromNeighbors)
+        println("Starting server ...")
+        receiveTasksAndLoads(::doOrDelegate, loadsFromNeighbors)
+        println("Started server.")
+
+
+        //instantiate N channels (one for each nbr) and pass them to this method
+        sender.sendUpdates(mapa de vizinhos pra channels)
 
         coroutineScope {
             //only one channel will be selected at a time (synchronized)
             while (true) select<Unit> {
                 loadsFromNeighbors.onReceive {
+                    println("Received $it")
                     cluster.load[it.node] = it.load
                 }
                 localUpdates.onReceive {
+                    println("Received $it")
                     load = it.update(load)
-                    launch { broadcastUpdate(sender, cluster, load) }
+
+                    //send NodeLoad(cluster.hostNode, load) to each channel that sender is listening to
+                    //sender will be listening to each chan and will forward it to N websockets
+
                 }
             }
         }
     }
 
     @KtorExperimentalAPI
-    private fun CoroutineScope.broadcastUpdate(sender: Sender, cluster: Cluster, load: Int) {
+    suspend fun broadcastUpdate(sender: Sender, cluster: Cluster, load: Int) {
+        val nodeLoad = NodeLoad(cluster.hostNode, load)
+        println("Broadcasting $nodeLoad")
         cluster.neighbors.forEach { destination ->
-            launch {
-                sender.sendUpdate(NodeLoad(cluster.hostNode, load), destination)
-            }
+            sender.sendUpdate(nodeLoad, destination)
         }
+        println("Broadcasted $nodeLoad")
     }
 
     private companion object {
         //threshold of load difference to consider that a delegation is worth doing
-        const val threshold = 0
+        const val threshold = 5
     }
 
 }
