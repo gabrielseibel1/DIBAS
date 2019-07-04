@@ -1,9 +1,7 @@
 package dibas
 
 import io.ktor.util.KtorExperimentalAPI
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 
 @KtorExperimentalAPI
 fun main(): Unit = runBlocking {
@@ -12,20 +10,40 @@ fun main(): Unit = runBlocking {
 
     val dibas = Dibas(cluster)
 
-    launch { dibas.run() }
+    launch {
+        dibas.run()
+    }
 
-    var i = 0
+    println("Wait a bit ...")
+    delay(10_000L)
+    println("Start producing tasks ...")
+
+    val task = Task {
+        Result("I was computed")
+    }
+
+    println("dibas.resolve(task) ...")
+    withContext(Dispatchers.Default) {
+        val result = dibas.resolve(task)
+        println("Main -> $result")
+    }
+
+    /*var i = 0
     while (true) {
         i++
         delay(1_000L)
 
+        println("Producing task $i ...")
         val task = Task {
-            println("I'm task $i")
+            println("I'm computation $i")
             delay((100..3_000).random().toLong())
             Result("I'm result $i")
         }
 
-        val result = dibas.resolve(task)
-        println(result)
-    }
+        println("dibas.resolve(task $i) ...")
+        launch {
+            val result = dibas.resolve(task)
+            println(result)
+        }
+    }*/
 }
