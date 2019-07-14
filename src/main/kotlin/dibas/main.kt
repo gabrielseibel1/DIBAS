@@ -4,7 +4,12 @@ import io.ktor.util.KtorExperimentalAPI
 import kotlinx.coroutines.*
 
 @KtorExperimentalAPI
-fun main(): Unit = runBlocking {
+fun main() {
+    delayDemo()
+}
+
+@KtorExperimentalAPI
+fun delayDemo() = runBlocking {
     val cluster = Cluster.fromFile("src/main/resources/config/clusterSingle.csv")
     println(cluster)
 
@@ -22,7 +27,7 @@ fun main(): Unit = runBlocking {
 
         logger.log("\n\nProducing task $it ...")
         val task = Task {
-            delay(20_000L / (it+1))
+            delay(20_000L / (it + 1))
             Result("$it")
         }
 
