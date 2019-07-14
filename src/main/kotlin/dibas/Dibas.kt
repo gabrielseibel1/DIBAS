@@ -5,10 +5,10 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.selects.select
 
-class Dibas(private val cluster: Cluster) {
+class Dibas(private val cluster: Cluster, private val logger: Logger = ThreadAwareLogger()) {
 
     @KtorExperimentalAPI
-    private val sender = Sender()
+    private val sender = Sender(cluster, logger)
 
     @KtorExperimentalAPI
     suspend fun resolve(task: Task): Result {
@@ -22,46 +22,51 @@ class Dibas(private val cluster: Cluster) {
         var load = 0
 
         suspend fun doOrDelegate(task: Task): Result {
+            //attempt to delegate task
             val neighbor = cluster.lessBusyNeighbor()
             if (neighbor.load + threshold < load) {
+                log("delegating to ${neighbor.node}")
                 return sender.delegate(task, neighbor.node)
             }
 
             //execute task locally
+            log("${cluster.hostNode} calculating result ...")
             localUpdates.send(LocalLoadUpdate.INC)
             val result = task.toResult.invoke()
             localUpdates.send(LocalLoadUpdate.DEC)
+            log("${cluster.hostNode} obtained $result")
             return result
         }
 
-        receiveTasksAndUpdates(::doOrDelegate, loadsFromNeighbors)
+        receiveTasksAndLoads(::doOrDelegate, loadsFromNeighbors)
+        log("started server")
+
+        sender.startWebSockets()
+        log("started client")
 
         coroutineScope {
             //only one channel will be selected at a time (synchronized)
             while (true) select<Unit> {
                 loadsFromNeighbors.onReceive {
                     cluster.load[it.node] = it.load
+                    log("updated $it")
                 }
                 localUpdates.onReceive {
+                    log("broadcasting $it")
                     load = it.update(load)
-                    launch { broadcastUpdate(sender, cluster, load) }
+                    sender.broadcastUpdate(NodeLoad(cluster.hostNode, load))
                 }
             }
         }
     }
 
-    @KtorExperimentalAPI
-    private fun CoroutineScope.broadcastUpdate(sender: Sender, cluster: Cluster, load: Int) {
-        cluster.neighbors.forEach { destination ->
-            launch {
-                sender.sendUpdate(NodeLoad(cluster.hostNode, load), destination)
-            }
-        }
+    private fun log(s: String) {
+        logger.log(s)
     }
 
     private companion object {
         //threshold of load difference to consider that a delegation is worth doing
-        const val threshold = 0
+        const val threshold = 50
     }
 
 }

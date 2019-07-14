@@ -5,6 +5,7 @@ import java.io.*
 data class Task(val toResult: suspend () -> Result) : Serializable
 data class Result(val content: String): Serializable
 data class NodeLoad(val node: Node, val load: Int): Serializable
+data class Node(val id: String, val ip: String): Serializable
 
 enum class LocalLoadUpdate {
     INC {

@@ -27,6 +27,7 @@ dependencies {
     implementation(ktor("client-cio"))
     implementation(ktor("client-js"))
     implementation(ktor("client-okhttp"))
+    implementation("ch.qos.logback:logback-classic:1.2.3")
 }
 
 tasks.withType<KotlinCompile> {

@@ -1,29 +1,34 @@
 package dibas
 
 import io.ktor.util.KtorExperimentalAPI
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 
 @KtorExperimentalAPI
 fun main(): Unit = runBlocking {
-    val cluster = clusterFromFile("../resources/config/cluster.csv")
-    val dibas = Dibas(cluster)
+    val cluster = Cluster.fromFile("src/main/resources/config/clusterSingle.csv")
+    println(cluster)
 
-    launch { dibas.run() }
+    val logger = ThreadAwareLogger()
+    val dibas = Dibas(cluster, logger)
 
-    var i = 0
-    while (true) {
-        i++
-        delay(1_000L)
+    launch {
+        dibas.run()
+    }
 
+    delay(5_000L)
+    println("Start producing tasks ...")
+
+    repeat(10) {
+
+        logger.log("\n\nProducing task $it ...")
         val task = Task {
-            println("I'm task $i")
-            delay((100..3_000).random().toLong())
-            Result("I'm result $i")
+            delay(20_000L / (it+1))
+            Result("$it")
         }
 
-        val result = dibas.resolve(task)
-        println(result)
+        launch {
+            val result = dibas.resolve(task)
+            logger.log("main --> $result")
+        }
     }
 }
