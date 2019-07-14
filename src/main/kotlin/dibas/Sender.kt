@@ -69,15 +69,11 @@ class Sender(cluster: Cluster, private val logger: Logger = ThreadAwareLogger())
             val frame = incoming.receive() as Frame.Binary
 
             val r = frame.readBytes().to<Result>()
-            log("serialized $r")
-
-            log("sending result to aux channel ...")
             resultChannel.send(r)
 
             close() //this seems to be important
         }
 
-        log("receiving result from aux channel ...")
         val result: Result = resultChannel.receive()
 
         log("returning $result from WS.")

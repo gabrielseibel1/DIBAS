@@ -8,42 +8,27 @@ fun main(): Unit = runBlocking {
     val cluster = Cluster.fromFile("src/main/resources/config/clusterSingle.csv")
     println(cluster)
 
-    val dibas = Dibas(cluster)
+    val logger = ThreadAwareLogger()
+    val dibas = Dibas(cluster, logger)
 
     launch {
         dibas.run()
     }
 
-    println("Wait a bit ...")
-    delay(10_000L)
+    delay(5_000L)
     println("Start producing tasks ...")
 
-    val task = Task {
-        Result("I was computed")
-    }
+    repeat(10) {
 
-    println("dibas.resolve(task) ...")
-    withContext(Dispatchers.Default) {
-        val result = dibas.resolve(task)
-        println("Main -> $result")
-    }
-
-    /*var i = 0
-    while (true) {
-        i++
-        delay(1_000L)
-
-        println("Producing task $i ...")
+        logger.log("\n\nProducing task $it ...")
         val task = Task {
-            println("I'm computation $i")
-            delay((100..3_000).random().toLong())
-            Result("I'm result $i")
+            delay(20_000L / (it+1))
+            Result("$it")
         }
 
-        println("dibas.resolve(task $i) ...")
         launch {
             val result = dibas.resolve(task)
-            println(result)
+            logger.log("main --> $result")
         }
-    }*/
+    }
 }

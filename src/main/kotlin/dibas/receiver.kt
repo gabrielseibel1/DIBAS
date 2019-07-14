@@ -38,7 +38,6 @@ fun receiveTasksAndLoads(
                     when (frame) {
                         is Frame.Binary -> {
                             logger.log("Received at /task")
-
                             val task = frame.readBytes().to<Task>()
                             val result = doOrDelegate(task)
                             outgoing.send(Frame.Binary(true, result.toBytes()))
@@ -50,9 +49,8 @@ fun receiveTasksAndLoads(
                 for (frame in incoming) {
                     when (frame) {
                         is Frame.Binary -> {
-                            logger.log("Received at /loads")
-
                             val nl = frame.readBytes().to<NodeLoad>()
+                            logger.log("Received $nl at /loads")
                             loads.send(nl)
                         }
                     }
