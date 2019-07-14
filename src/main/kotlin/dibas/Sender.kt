@@ -13,14 +13,25 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 
 @KtorExperimentalAPI
-class Sender(private val logger: Logger = ThreadAwareLogger()) {
+class Sender(cluster: Cluster, private val logger: Logger = ThreadAwareLogger()) {
 
     private val client = HttpClient {
         install(WebSockets)
     }
 
-    fun sendUpdates(destinationsChannels: Map<Node, Channel<NodeLoad>>) {
-        destinationsChannels.forEach { (destination, channel) ->
+    private val updateChannels =
+        cluster.graph[cluster.hostNode]?.map { Pair(it, Channel<NodeLoad>(Channel.UNLIMITED)) }.orEmpty().toMap()
+
+    fun broadcastUpdate(update: NodeLoad) {
+        updateChannels.forEach { (_, chan) ->
+            CoroutineScope(Dispatchers.Default).launch {
+                chan.send(update)
+            }
+        }
+    }
+
+    fun startWebSockets() {
+        updateChannels.forEach { (destination, channel) ->
             CoroutineScope(Dispatchers.Default).launch {
                 client.ws(
                     method = HttpMethod.Get,
@@ -33,16 +44,6 @@ class Sender(private val logger: Logger = ThreadAwareLogger()) {
                     close() //is this needed?
                 }
             }
-        }
-    }
-
-    suspend fun sendUpdate(update: NodeLoad, node: Node) {
-        client.ws(
-            method = HttpMethod.Get,
-            host = node.ip,
-            port = 8080, path = "/loads"
-        ) {
-            send(Frame.Binary(true, update.toBytes()))
         }
     }
 

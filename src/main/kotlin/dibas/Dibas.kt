@@ -8,7 +8,7 @@ import kotlinx.coroutines.selects.select
 class Dibas(private val cluster: Cluster, private val logger: Logger = ThreadAwareLogger()) {
 
     @KtorExperimentalAPI
-    private val sender = Sender()
+    private val sender = Sender(cluster, logger)
 
     @KtorExperimentalAPI
     suspend fun resolve(task: Task): Result {
@@ -38,28 +38,23 @@ class Dibas(private val cluster: Cluster, private val logger: Logger = ThreadAwa
             return result
         }
 
-        log("starting server ...")
         receiveTasksAndLoads(::doOrDelegate, loadsFromNeighbors)
-        log("started server.")
+        log("started server")
 
-
-        //instantiate N channels (one for each nbr) and pass them to this method
-        sender.sendUpdates(mapa de vizinhos pra channels)
+        sender.startWebSockets()
+        log("started client")
 
         coroutineScope {
             //only one channel will be selected at a time (synchronized)
             while (true) select<Unit> {
                 loadsFromNeighbors.onReceive {
-                    log("received $it")
                     cluster.load[it.node] = it.load
+                    log("updated $it")
                 }
                 localUpdates.onReceive {
-                    log("received $it")
+                    log("broadcasting $it")
                     load = it.update(load)
-
-                    //send NodeLoad(cluster.hostNode, load) to each channel that sender is listening to
-                    //sender will be listening to each chan and will forward it to N websockets
-
+                    sender.broadcastUpdate(NodeLoad(cluster.hostNode, load))
                 }
             }
         }
@@ -67,16 +62,6 @@ class Dibas(private val cluster: Cluster, private val logger: Logger = ThreadAwa
 
     private fun log(s: String) {
         logger.log(s)
-    }
-
-    @KtorExperimentalAPI
-    suspend fun broadcastUpdate(sender: Sender, cluster: Cluster, load: Int) {
-        val nodeLoad = NodeLoad(cluster.hostNode, load)
-        log("broadcasting $nodeLoad")
-        cluster.neighbors.forEach { destination ->
-            sender.sendUpdate(nodeLoad, destination)
-        }
-        log("broadcasted $nodeLoad")
     }
 
     private companion object {
