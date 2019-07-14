@@ -18,7 +18,7 @@ class BasicLogger: Logger {
 class ThreadAwareLogger: Logger {
     override fun log(message: String) {
         StringBuilder()
-            .append("[${LocalDateTime.now()}] ")
+            //.append("[${LocalDateTime.now()}] ")
             .append("[TID ${Thread.currentThread().id}] ")
             .append(message.toLowerCase())
             .also { println(it.toString()) }

@@ -66,7 +66,7 @@ class Dibas(private val cluster: Cluster, private val logger: Logger = ThreadAwa
 
     private companion object {
         //threshold of load difference to consider that a delegation is worth doing
-        const val threshold = 5
+        const val threshold = 50
     }
 
 }
