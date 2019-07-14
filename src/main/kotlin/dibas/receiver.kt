@@ -26,6 +26,7 @@ fun receiveTasksAndLoads(
             maxFrameSize = Long.MAX_VALUE
             masking = false
         }
+        val logger: Logger = ThreadAwareLogger()
         routing {
             get("/") {
                 val time = LocalDateTime.now()
@@ -36,7 +37,7 @@ fun receiveTasksAndLoads(
                 for (frame in incoming) {
                     when (frame) {
                         is Frame.Binary -> {
-                            println("Received at /task")
+                            logger.log("Received at /task")
 
                             val task = frame.readBytes().to<Task>()
                             val result = doOrDelegate(task)
@@ -49,7 +50,7 @@ fun receiveTasksAndLoads(
                 for (frame in incoming) {
                     when (frame) {
                         is Frame.Binary -> {
-                            println("Received at /loads")
+                            logger.log("Received at /loads")
 
                             val nl = frame.readBytes().to<NodeLoad>()
                             loads.send(nl)

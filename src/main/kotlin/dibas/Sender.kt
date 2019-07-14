@@ -13,7 +13,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 
 @KtorExperimentalAPI
-class Sender {
+class Sender(private val logger: Logger = ThreadAwareLogger()) {
 
     private val client = HttpClient {
         install(WebSockets)
@@ -54,32 +54,36 @@ class Sender {
         //wait result that websocket will send
         val resultChannel = Channel<Result>(1)
 
-        println("Delegating task to $node")
+        log("delegating task to $node")
         client.ws(
             method = HttpMethod.Get,
             host = node.ip,
             port = 8080, path = "/tasks"
         ) {
 
-            println("Sending task via WS ...")
+            log("sending task via WS ...")
             send(Frame.Binary(true, task.toBytes()))
 
-            println("Waiting for result via WS ...")
+            log("waiting for result via WS ...")
             val frame = incoming.receive() as Frame.Binary
 
             val r = frame.readBytes().to<Result>()
-            println("Serialized $r")
+            log("serialized $r")
 
-            println("Sending result to aux channel ...")
+            log("sending result to aux channel ...")
             resultChannel.send(r)
 
             close() //this seems to be important
         }
 
-        println("Receiving result from aux channel ...")
+        log("receiving result from aux channel ...")
         val result: Result = resultChannel.receive()
 
-        println("Returning $result from WS.")
+        log("returning $result from WS.")
         return result
+    }
+
+    private fun log(s: String) {
+        logger.log(s)
     }
 }

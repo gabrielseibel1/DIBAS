@@ -5,7 +5,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.selects.select
 
-class Dibas(private val cluster: Cluster) {
+class Dibas(private val cluster: Cluster, private val logger: Logger = ThreadAwareLogger()) {
 
     @KtorExperimentalAPI
     private val sender = Sender()
@@ -22,24 +22,25 @@ class Dibas(private val cluster: Cluster) {
         var load = 0
 
         suspend fun doOrDelegate(task: Task): Result {
+            //attempt to delegate task
             val neighbor = cluster.lessBusyNeighbor()
             if (neighbor.load + threshold < load) {
-                println("Delegating to ${neighbor.node}")
+                log("delegating to ${neighbor.node}")
                 return sender.delegate(task, neighbor.node)
             }
 
             //execute task locally
-            println("${cluster.hostNode} calculating result ...")
+            log("${cluster.hostNode} calculating result ...")
             localUpdates.send(LocalLoadUpdate.INC)
             val result = task.toResult.invoke()
             localUpdates.send(LocalLoadUpdate.DEC)
-            println("${cluster.hostNode} obtained $result")
+            log("${cluster.hostNode} obtained $result")
             return result
         }
 
-        println("Starting server ...")
+        log("starting server ...")
         receiveTasksAndLoads(::doOrDelegate, loadsFromNeighbors)
-        println("Started server.")
+        log("started server.")
 
 
         //instantiate N channels (one for each nbr) and pass them to this method
@@ -49,11 +50,11 @@ class Dibas(private val cluster: Cluster) {
             //only one channel will be selected at a time (synchronized)
             while (true) select<Unit> {
                 loadsFromNeighbors.onReceive {
-                    println("Received $it")
+                    log("received $it")
                     cluster.load[it.node] = it.load
                 }
                 localUpdates.onReceive {
-                    println("Received $it")
+                    log("received $it")
                     load = it.update(load)
 
                     //send NodeLoad(cluster.hostNode, load) to each channel that sender is listening to
@@ -64,14 +65,18 @@ class Dibas(private val cluster: Cluster) {
         }
     }
 
+    private fun log(s: String) {
+        logger.log(s)
+    }
+
     @KtorExperimentalAPI
     suspend fun broadcastUpdate(sender: Sender, cluster: Cluster, load: Int) {
         val nodeLoad = NodeLoad(cluster.hostNode, load)
-        println("Broadcasting $nodeLoad")
+        log("broadcasting $nodeLoad")
         cluster.neighbors.forEach { destination ->
             sender.sendUpdate(nodeLoad, destination)
         }
-        println("Broadcasted $nodeLoad")
+        log("broadcasted $nodeLoad")
     }
 
     private companion object {
