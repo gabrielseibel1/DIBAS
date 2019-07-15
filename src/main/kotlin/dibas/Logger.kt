@@ -24,3 +24,9 @@ class ThreadAwareLogger: Logger {
             .also { println(it.toString()) }
     }
 }
+
+class SilentLogger: Logger {
+    override fun log(message: String) {
+        //do nothing
+    }
+}
